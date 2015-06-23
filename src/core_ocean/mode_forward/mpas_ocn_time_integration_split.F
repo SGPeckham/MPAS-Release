@@ -21,7 +21,8 @@
 
 module ocn_time_integration_split
 
-   use mpas_grid_types
+   use mpas_derived_types
+   use mpas_pool_routines
    use mpas_constants
    use mpas_dmpar
    use mpas_vector_reconstruction
@@ -420,9 +421,15 @@ module ocn_time_integration_split
 
            ! compute vertAleTransportTop.  Use u (rather than normalTransportVelocity) for momentum advection.
            ! Use the most recent time level available.
-           call ocn_vert_transport_velocity_top(meshPool, verticalMeshPool, &
-              layerThicknessCur, layerThicknessEdge, normalVelocityCur, &
-              sshCur, highFreqThicknessNew, dt, vertAleTransportTop, err)
+           if (associated(highFreqThicknessNew)) then
+              call ocn_vert_transport_velocity_top(meshPool, verticalMeshPool, &
+                 layerThicknessCur, layerThicknessEdge, normalVelocityCur, &
+                 sshCur, dt, vertAleTransportTop, err, highFreqThicknessNew)
+            else
+               call ocn_vert_transport_velocity_top(meshPool, verticalMeshPool, &
+                  layerThicknessCur, layerThicknessEdge, normalVelocityCur, &
+                  sshCur, dt, vertAleTransportTop, err)
+            endif
 
             call ocn_tend_vel(tendPool, statePool, forcingPool, diagnosticsPool, meshPool, scratchPool, stage1_tend_time)
 
@@ -455,6 +462,7 @@ module ocn_time_integration_split
                call mpas_pool_get_array(meshPool, 'maxLevelEdgeTop', maxLevelEdgeTop)
                call mpas_pool_get_array(meshPool, 'dcEdge', dcEdge)
 
+               call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocityNew, 2)
                call mpas_pool_get_array(statePool, 'normalBaroclinicVelocity', normalBaroclinicVelocityCur, 1)
                call mpas_pool_get_array(statePool, 'normalBaroclinicVelocity', normalBaroclinicVelocityNew, 2)
                call mpas_pool_get_array(statePool, 'ssh', sshNew, 2)
@@ -466,7 +474,7 @@ module ocn_time_integration_split
 
                allocate(uTemp(nVertLevels))
 
-               ! Put f*normalBaroclinicVelocity^{perp} in uNew as a work variable
+               ! Put f*normalBaroclinicVelocity^{perp} in normalVelocityNew as a work variable
                call ocn_fuperp(statePool, meshPool, 2)
 
                do iEdge = 1, nEdges
@@ -1178,9 +1186,15 @@ module ocn_time_integration_split
             ! compute vertAleTransportTop.  Use normalTransportVelocity for advection of layerThickness and tracers.
             ! Use time level 1 values of layerThickness and layerThicknessEdge because 
             ! layerThickness has not yet been computed for time level 2.
-            call ocn_vert_transport_velocity_top(meshPool, verticalMeshPool, &
-               layerThicknessCur, layerThicknessEdge, normalTransportVelocity, &
-               sshCur, highFreqThicknessNew, dt, vertAleTransportTop, err)
+           if (associated(highFreqThicknessNew)) then
+              call ocn_vert_transport_velocity_top(meshPool, verticalMeshPool, &
+                 layerThicknessCur, layerThicknessEdge, normalTransportVelocity, &
+                 sshCur, dt, vertAleTransportTop, err, highFreqThicknessNew)
+            else
+               call ocn_vert_transport_velocity_top(meshPool, verticalMeshPool, &
+                 layerThicknessCur, layerThicknessEdge, normalTransportVelocity, &
+                 sshCur, dt, vertAleTransportTop, err)
+            endif
 
             call ocn_tend_thick(tendPool, forcingPool, diagnosticsPool, meshPool)
 
@@ -1234,6 +1248,7 @@ module ocn_time_integration_split
 
             call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
             call mpas_pool_get_array(meshPool, 'edgeMask', edgeMask)
+            call mpas_pool_get_array(meshPool, 'maxLevelEdgeTop', maxLevelEdgeTop)
 
             call mpas_pool_get_array(statePool, 'tracers', tracersCur, 1)
             call mpas_pool_get_array(statePool, 'tracers', tracersNew, 2)

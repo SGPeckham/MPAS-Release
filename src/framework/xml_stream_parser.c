@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include "ezxml/ezxml.h"
+#include "ezxml.h"
 
 #ifdef _MPI
 #include "mpi.h"
@@ -22,13 +22,13 @@
 #define MSGSIZE 256
 
 
-/* 
+/*
  *  Interface routines for building streams at run-time; defined in mpas_stream_manager.F
  */
-void stream_mgr_create_stream_c(void *, const char *, int *, const char *, const char *, char *, char *, int *, int *, int *, int *);
-void mpas_stream_mgr_add_field_c(void *, const char *, const char *, int *);
-void mpas_stream_mgr_add_stream_fields_c(void *, const char *, const char *, int *);
-void mpas_stream_mgr_add_pool_c(void *, const char *, const char *, int *);
+void stream_mgr_create_stream_c(void *, const char *, int *, const char *, const char *, const char *, const char *, int *, int *, int *, int *, int *);
+void mpas_stream_mgr_add_field_c(void *, const char *, const char *, const char *, int *);
+void mpas_stream_mgr_add_immutable_stream_fields_c(void *, const char *, const char *, const char *, int *);
+void mpas_stream_mgr_add_pool_c(void *, const char *, const char *, const char *, int *);
 void stream_mgr_add_alarm_c(void *, const char *, const char *, const char *, const char *, int *);
 void stream_mgr_add_pkg_c(void *, const char *, const char *, int *);
 
@@ -45,7 +45,7 @@ struct stacknode {
 struct stacknode *head = NULL;
 
 
-/* 
+/*
  *  Global variables
  */
 static char *global_file;
@@ -137,7 +137,7 @@ struct stacknode * pop_tag(void)
  *
  *  Copies only the name of an XML tag from tag_buf into tag_name. For example,
  *  the name of the tag
- * 
+ *
  *      <stream name="floop" interval="06:00:00"/>
  *
  *  is the string "stream".
@@ -162,19 +162,19 @@ void parse_xml_tag_name(char *tag_buf, char *tag_name)
  *
  *  Function: parse_xml_tag
  *
- *  Parses the next XML tag into a string, plus other bookkeeping. All characters 
+ *  Parses the next XML tag into a string, plus other bookkeeping. All characters
  *  between the first '<' and immediately following '>' character from xml_buf
  *  are copied into tag. The length of the buffer xml_buf is at least buf_len, and
  *  the length of the buffer tag is also at least buf_len.
  *
- *  For providing useful error messages, this routine also counts line numbers, 
+ *  For providing useful error messages, this routine also counts line numbers,
  *  incrementing the line number each time a newline character is encountered.
  *
  *  The output argument start_line provides the line number on which the returned
  *  tag began.
  *
  *  The output argument tag_len provides the number of characters in the tag that
- *  were copied into the tag buffer. If no complete XML tag is found in the input 
+ *  were copied into the tag buffer. If no complete XML tag is found in the input
  *  buffer, the tag_len argument will be set to 0.
  *
  *  The return value is the index in xml_buf representing the end of the tag,
@@ -234,12 +234,12 @@ size_t parse_xml_tag(char *xml_buf, size_t buf_len, char *tag, size_t *tag_len, 
  *  Function: par_read
  *
  *  Reads the contents of a file into a buffer in distributed-memory parallel code.
- * 
- *  The buffer xml_buf is allocated with size bufsize, which will be exactly the 
+ *
+ *  The buffer xml_buf is allocated with size bufsize, which will be exactly the
  *  number of bytes in the file fname. Only the master task will actually read the
  *  file, and the contents are broadcast to all other tasks. The mpi_comm argument
  *  is a Fortran MPI communicator used to determine which task is the master task.
- * 
+ *
  *  A return code of 0 indicates the file was successfully read and broadcast to
  *  all MPI tasks that belong to the communicator.
  *
@@ -262,7 +262,7 @@ int par_read(char *fname, int *mpi_comm, char **xml_buf, size_t *bufsize)
 
 	if (rank == 0) {
 		iofd = open(fname, O_RDONLY);
-		if (!iofd) {
+		if (iofd <= 0) {
 			fprintf(stderr, "********************************************************************************\n\n");
 			fprintf(stderr, "Error: Could not open run-time I/O config file %s\n\n", fname);
 			fprintf(stderr, "********************************************************************************\n");
@@ -301,7 +301,7 @@ int par_read(char *fname, int *mpi_comm, char **xml_buf, size_t *bufsize)
  *
  *  Function: attribute_check
  *
- *  Checks that a stream has the required attributes, and that attributes 
+ *  Checks that a stream has the required attributes, and that attributes
  *  are consistent.
  *
  *********************************************************************************/
@@ -420,23 +420,28 @@ int uniqueness_check(ezxml_t stream1, ezxml_t stream2)
 {
 	const char *name, *name2;
 	const char *filename, *filename2;
+	const char *type, *type2;
 	char msgbuf[MSGSIZE];
 
 	if (stream1 != stream2) {
 		name = ezxml_attr(stream1, "name");
 		filename = ezxml_attr(stream1, "filename_template");
+		type = ezxml_attr(stream1, "type");
 		name2 = ezxml_attr(stream2, "name");
 		filename2 = ezxml_attr(stream2, "filename_template");
+		type2 = ezxml_attr(stream2, "type");
 
 		if (strcmp(name, name2) == 0) {
 			snprintf(msgbuf, MSGSIZE, "stream \"%s\" is define more than once.", name);
 			fmt_err(msgbuf);
 			return 1;
 		}
-		if (strcmp(filename, filename2) == 0) {
-			snprintf(msgbuf, MSGSIZE, "streams \"%s\" and \"%s\" cannot share the filename_template \"%s\".", name, name2, filename);
-			fmt_err(msgbuf);
-			return 1;
+		if (strstr(type, "output") != NULL || strstr(type2, "output") != NULL){
+			if (strcmp(filename, filename2) == 0) {
+				snprintf(msgbuf, MSGSIZE, "Output streams \"%s\" and \"%s\" cannot share the filename_template \"%s\".", name, name2, filename);
+				fmt_err(msgbuf);
+				return 1;
+			}
 		}
 	}
 
@@ -550,8 +555,8 @@ int xml_syntax_check(char *xml_buf, size_t bufsize)
 	struct stacknode tmp_node;
 
 
-	/* 
-	 *  Check that we have balanced angle brackets 
+	/*
+	 *  Check that we have balanced angle brackets
 	 */
 	nleft = 0;
 	nright = 0;
@@ -629,7 +634,7 @@ int xml_syntax_check(char *xml_buf, size_t bufsize)
 			nleft = (nleft + 1) % 2;
 		}
 
-		/* 
+		/*
 		 *  When we reach the end of a line or the beginning of a new attribute definition,
 		 *     the quotes should be balanced...
 		 */
@@ -650,7 +655,7 @@ int xml_syntax_check(char *xml_buf, size_t bufsize)
 	}
 
 
-	/* 
+	/*
 	 *  Check that each tag is closed
 	 */
 	i = 0;
@@ -682,7 +687,7 @@ int xml_syntax_check(char *xml_buf, size_t bufsize)
 					snprintf(msgbuf, MSGSIZE, "line %i, unclosed or badly nested XML tag \"%s\".", node->line, node->name);
 					fmt_err(msgbuf);
 
-					while ((node = pop_tag()) != NULL) 
+					while ((node = pop_tag()) != NULL)
 						free(node);
 					return 1;	
 				}
@@ -708,7 +713,7 @@ int xml_syntax_check(char *xml_buf, size_t bufsize)
 		snprintf(msgbuf, MSGSIZE, "line %i, unclosed or badly nested XML tag \"%s\".", node->line, node->name);
 		fmt_err(msgbuf);
 		
-		while ((node = pop_tag()) != NULL) 
+		while ((node = pop_tag()) != NULL)
 			free(node);
 		return 1;	
 	}
@@ -736,6 +741,7 @@ int build_stream_path(const char *stream, const char *template, int *mpi_comm)
 	int i, len;
 	char msgbuf[MSGSIZE];
 	int err, retval;
+	int writable_parent;
 	int rank;
 
 
@@ -770,25 +776,32 @@ int build_stream_path(const char *stream, const char *template, int *mpi_comm)
 		}
 
 		if (create_dir) {
+			writable_parent = 1;
 			for(i=0; i < len; i++) {
 				if (filename_path[i] == '/') {
 					directory[i] = '\0';
 					err = mkdir(directory, S_IRWXU | S_IRWXG | S_IRWXO);
-					if ( errno == EEXIST ) {
-						/* directory exists, need to check permissions */
-						if (access(directory, W_OK) != 0) {
-							snprintf(msgbuf, MSGSIZE, "definition of stream \"%s\" references directory %s without write permission.", stream, directory);
+					if ( err != 0 ) {
+						if ( errno == EEXIST ) {
+							/* directory exists, need to check permissions */
+							writable_parent = 1;
+							if (access(directory, W_OK) != 0) {
+								writable_parent = 0;
+							}
+						} else if ( !writable_parent ) {
+							snprintf(msgbuf, MSGSIZE, "cannot create directory %s needed by stream \"%s\": parent directory is not writable.", directory, stream);
 							fmt_err(msgbuf);
 							free(filename_path);
 							free(directory);
-	
+							writable_parent = 0;
+
 							retval = 1;
 #ifdef _MPI
 							err = MPI_Bcast(&retval, 1, MPI_INT, 0, comm);
 #endif
-							return retval;
+							return retval;						
 						}
-					} 
+					}
 				}
 				directory[i] = filename_path[i];
 			}
@@ -809,6 +822,19 @@ int build_stream_path(const char *stream, const char *template, int *mpi_comm)
 #endif
 					return retval;
 				}
+			}
+			else if ( !writable_parent ) {
+					snprintf(msgbuf, MSGSIZE, "cannot create directory %s needed by stream \"%s\": parent directory is not writable.", directory, stream);
+					fmt_err(msgbuf);
+					free(filename_path);
+					free(directory);
+					writable_parent = 0;
+
+					retval = 1;
+#ifdef _MPI
+					err = MPI_Bcast(&retval, 1, MPI_INT, 0, comm);
+#endif
+					return retval;						
 			}
 		}
 
@@ -863,19 +889,24 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 	const char *streamID, *filename_template, *filename_interval, *direction, *varfile, *fieldname_const, *reference_time, *record_interval, *streamname_const, *precision;
 	const char *interval_in, *interval_out, *packagelist;
 	const char *clobber;
+	const char *iotype;
 	char *packages, *package;
 	char filename_interval_string[256];
 	char ref_time_local[256];
 	char rec_intv_local[256];
 	char fieldname[256];
+	char packages_local[256];
 	FILE *fd;
 	char msgbuf[MSGSIZE];
 	int itype;
 	int iclobber;
+	int i_iotype;
 	int iprec;
 	int immutable;
 	int err;
 
+
+	packages_local[0] = '\0';
 
 	fprintf(stderr, "\nParsing run-time I/O configuration from %s ...\n", fname);
 	*status = 0;
@@ -911,6 +942,7 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 		precision = ezxml_attr(stream_xml, "precision");
 		packagelist = ezxml_attr(stream_xml, "packages");
 		clobber = ezxml_attr(stream_xml, "clobber_mode");
+		iotype = ezxml_attr(stream_xml, "io_type");
 
 		/* Setup filename_interval correctly.
 		 *
@@ -980,6 +1012,7 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 		fprintf(stderr, "        %-20s%s\n", "filename interval:", filename_interval_string);
 
 		/* NB: These clobber constants must match those in the mpas_stream_manager module! */
+		iclobber = 0;
 		if (clobber != NULL) {
 			if (strstr(clobber, "never_modify") != NULL) {
 				iclobber = 0;
@@ -1002,11 +1035,35 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 				fprintf(stderr, "        %-20s%s\n", "clobber mode:", "overwrite");
 			}
 			else {
-                		iclobber = 0;
+				iclobber = 0;
 				fprintf(stderr, "        *** unrecognized clobber_mode specification; existing files will not be modified\n");
 			}
 		}
 
+		/* NB: These io_type constants must match those in the mpas_stream_manager module! */
+		i_iotype = 0;
+		if (iotype != NULL) {
+			if (strstr(iotype, "pnetcdf,cdf5") != NULL) {
+				i_iotype = 1;
+				fprintf(stderr, "        %-20s%s\n", "I/O type:", "Parallel-NetCDF (CDF-5, large variable support)");
+			}
+			else if (strstr(iotype, "pnetcdf") != NULL) {
+				i_iotype = 0;
+				fprintf(stderr, "        %-20s%s\n", "I/O type:", "Parallel-NetCDF");
+			}
+			else if (strstr(iotype, "netcdf4") != NULL) {
+				i_iotype = 3;
+				fprintf(stderr, "        %-20s%s\n", "I/O type:", "NetCDF-4/HDF5");
+			}
+			else if (strstr(iotype, "netcdf") != NULL) {
+				i_iotype = 2;
+				fprintf(stderr, "        %-20s%s\n", "I/O type:", "Serial NetCDF");
+			}
+			else {
+				i_iotype = 0;
+				fprintf(stderr, "        *** unrecognized io_type specification; defaulting to Parallel-NetCDF\n");
+			}
+		}
 
 		/* NB: These type constants must match those in the mpas_stream_manager module! */
 		if (strstr(direction, "input") != NULL && strstr(direction, "output") != NULL) {
@@ -1068,8 +1125,8 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 			}
 		}
 
-		stream_mgr_create_stream_c(manager, streamID, &itype, filename_template, filename_interval_string, ref_time_local, rec_intv_local, 
-					&immutable, &iprec, &iclobber, &err);
+		stream_mgr_create_stream_c(manager, streamID, &itype, filename_template, filename_interval_string, ref_time_local, rec_intv_local,
+					&immutable, &iprec, &iclobber, &i_iotype, &err);
 		if (err != 0) {
 			*status = 1;
 			return;
@@ -1139,6 +1196,7 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 		precision = ezxml_attr(stream_xml, "precision");
 		packagelist = ezxml_attr(stream_xml, "packages");
 		clobber = ezxml_attr(stream_xml, "clobber_mode");
+		iotype = ezxml_attr(stream_xml, "io_type");
 
 		/* Setup filename_interval correctly.
 		 *
@@ -1208,6 +1266,7 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 		fprintf(stderr, "        %-20s%s\n", "filename interval:", filename_interval_string);
 
 		/* NB: These clobber constants must match those in the mpas_stream_manager module! */
+		iclobber = 0;
 		if (clobber != NULL) {
 			if (strstr(clobber, "never_modify") != NULL) {
 				iclobber = 0;
@@ -1230,8 +1289,33 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 				fprintf(stderr, "        %-20s%s\n", "clobber mode:", "overwrite");
 			}
 			else {
-                		iclobber = 0;
+				iclobber = 0;
 				fprintf(stderr, "        *** unrecognized clobber_mode specification; existing files will not be modified\n");
+			}
+		}
+
+		/* NB: These io_type constants must match those in the mpas_stream_manager module! */
+		i_iotype = 0;
+		if (iotype != NULL) {
+			if (strstr(iotype, "pnetcdf,cdf5") != NULL) {
+				i_iotype = 1;
+				fprintf(stderr, "        %-20s%s\n", "I/O type:", "Parallel-NetCDF (CDF-5, large variable support)");
+			}
+			else if (strstr(iotype, "pnetcdf") != NULL) {
+				i_iotype = 0;
+				fprintf(stderr, "        %-20s%s\n", "I/O type:", "Parallel-NetCDF");
+			}
+			else if (strstr(iotype, "netcdf4") != NULL) {
+				i_iotype = 3;
+				fprintf(stderr, "        %-20s%s\n", "I/O type:", "NetCDF-4/HDF5");
+			}
+			else if (strstr(iotype, "netcdf") != NULL) {
+				i_iotype = 2;
+				fprintf(stderr, "        %-20s%s\n", "I/O type:", "Serial NetCDF");
+			}
+			else {
+				i_iotype = 0;
+				fprintf(stderr, "        *** unrecognized io_type specification; defaulting to Parallel-NetCDF\n");
 			}
 		}
 
@@ -1295,8 +1379,8 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 			}
 		}
 
-		stream_mgr_create_stream_c(manager, streamID, &itype, filename_template, filename_interval_string, ref_time_local, rec_intv_local, 
-						&immutable, &iprec, &iclobber, &err);
+		stream_mgr_create_stream_c(manager, streamID, &itype, filename_template, filename_interval_string, ref_time_local, rec_intv_local,
+					&immutable, &iprec, &iclobber, &i_iotype, &err);
 		if (err != 0) {
 			*status = 1;
 			return;
@@ -1353,12 +1437,19 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 
 		for (varfile_xml = ezxml_child(stream_xml, "file"); varfile_xml; varfile_xml = ezxml_next(varfile_xml)) {
 			varfile = ezxml_attr(varfile_xml, "name");
+			packagelist = ezxml_attr(varfile_xml, "packages");
+
+			if (packagelist != NULL)
+				strncpy(packages_local, packagelist, (size_t)256);
+			else
+				packages_local[0] = '\0';
+
 			/* TODO: We should probably only have one task open and read the file... */
 			/* TODO: This doesn't seem like it supports var_arrays, var_structs, or streams.... */
 			fd = fopen(varfile, "r");
 			if (fd != NULL) {
 				while (fscanf(fd, "%s", fieldname) != EOF) {
-					stream_mgr_add_field_c(manager, streamID, (const char *)fieldname, &err);
+					stream_mgr_add_field_c(manager, streamID, (const char *)fieldname, packages_local, &err);
 					if (err != 0) {
 						*status = 1;
 						return;
@@ -1376,7 +1467,14 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 
 		for (var_xml = ezxml_child(stream_xml, "var"); var_xml; var_xml = ezxml_next(var_xml)) {
 			fieldname_const = ezxml_attr(var_xml, "name");
-			stream_mgr_add_field_c(manager, streamID, fieldname_const, &err);
+			packagelist = ezxml_attr(var_xml, "packages");
+
+			if (packagelist != NULL)
+				strncpy(packages_local, packagelist, (size_t)256);
+			else
+				packages_local[0] = '\0';
+
+			stream_mgr_add_field_c(manager, streamID, fieldname_const, packages_local, &err);
 			if (err != 0) {
 				*status = 1;
 				return;
@@ -1385,7 +1483,14 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 
 		for (vararray_xml = ezxml_child(stream_xml, "var_array"); vararray_xml; vararray_xml = ezxml_next(vararray_xml)) {
 			fieldname_const = ezxml_attr(vararray_xml, "name");
-			stream_mgr_add_field_c(manager, streamID, fieldname_const, &err);
+			packagelist = ezxml_attr(vararray_xml, "packages");
+
+			if (packagelist != NULL)
+				strncpy(packages_local, packagelist, (size_t)256);
+			else
+				packages_local[0] = '\0';
+
+			stream_mgr_add_field_c(manager, streamID, fieldname_const, packages_local, &err);
 			if (err != 0) {
 				*status = 1;
 				return;
@@ -1393,7 +1498,14 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 		}
 		for (varstruct_xml = ezxml_child(stream_xml, "var_struct"); varstruct_xml; varstruct_xml = ezxml_next(varstruct_xml)) {
 			structname_const = ezxml_attr(varstruct_xml, "name");
-			stream_mgr_add_pool_c(manager, streamID, structname_const, &err);
+			packagelist = ezxml_attr(varstruct_xml, "packages");
+
+			if (packagelist != NULL)
+				strncpy(packages_local, packagelist, (size_t)256);
+			else
+				packages_local[0] = '\0';
+
+			stream_mgr_add_pool_c(manager, streamID, structname_const, packages_local, &err);
 			if (err != 0){
 				*status = 1;
 				return;
@@ -1402,46 +1514,53 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 
 		for (substream_xml = ezxml_child(stream_xml, "stream"); substream_xml; substream_xml = ezxml_next(substream_xml)) {
 			streamname_const = ezxml_attr(substream_xml, "name");
+			packagelist = ezxml_attr(substream_xml, "packages");
 
-			// Immutable streams are added through the add_stream_fields function.
-			// This is because they aren't defined in the XML file, and are instead defined in Regsitry.xml
-			for(streammatch_xml = ezxml_child(streams, "immutable_stream"); streammatch_xml; streammatch_xml = ezxml_next(streammatch_xml)) {
-				compstreamname_const = ezxml_attr(streammatch_xml, "name");
+			if (packagelist != NULL)
+				strncpy(packages_local, packagelist, (size_t)256);
+			else
+				packages_local[0] = '\0';
 
-				if (strcmp(streamname_const, compstreamname_const) == 0) {
-					stream_mgr_add_stream_fields_c(manager, streamID, streamname_const, &err);
-				}
-			}
 
-			for(streammatch_xml = ezxml_child(streams, "stream"); streammatch_xml; streammatch_xml = ezxml_next(streammatch_xml)) {
-				compstreamname_const = ezxml_attr(streammatch_xml, "name");
+			/* Immutable streams are added through the stream_mgr_add_immutable_stream_fields_c function, since
+			 * they aren't defined in the XML file, and are instead defined in Registry.xml.
+			 */
+			stream_mgr_add_immutable_stream_fields_c(manager, streamID, streamname_const, packages_local, &err);
+			if (err != 0) {
+				/* If that call was successful, we DID add an immutable_stream, so do not attempt to add
+				 * a mutable stream below.  Otherwise do attempt to add a mutable stream and continue.
+				 */
 
-				if (strcmp(streamname_const, compstreamname_const) == 0) {
-					for (var_xml = ezxml_child(streammatch_xml, "var"); var_xml; var_xml = ezxml_next(var_xml)) {
-						fieldname_const = ezxml_attr(var_xml, "name");
-						stream_mgr_add_field_c(manager, streamID, fieldname_const, &err);
-						if (err != 0) {
-							*status = 1;
-							return;
+				for(streammatch_xml = ezxml_child(streams, "stream"); streammatch_xml; streammatch_xml = ezxml_next(streammatch_xml)) {
+					compstreamname_const = ezxml_attr(streammatch_xml, "name");
+
+					if (strcmp(streamname_const, compstreamname_const) == 0) {
+						for (var_xml = ezxml_child(streammatch_xml, "var"); var_xml; var_xml = ezxml_next(var_xml)) {
+							fieldname_const = ezxml_attr(var_xml, "name");
+							stream_mgr_add_field_c(manager, streamID, fieldname_const, packages_local, &err);
+							if (err != 0) {
+								*status = 1;
+								return;
+							}
 						}
-					}
 
 
-					for (vararray_xml = ezxml_child(streammatch_xml, "var_array"); vararray_xml; vararray_xml = ezxml_next(vararray_xml)) {
-						fieldname_const = ezxml_attr(vararray_xml, "name");
-						stream_mgr_add_field_c(manager, streamID, fieldname_const, &err);
-						if (err != 0) {
-							*status = 1;
-							return;
+						for (vararray_xml = ezxml_child(streammatch_xml, "var_array"); vararray_xml; vararray_xml = ezxml_next(vararray_xml)) {
+							fieldname_const = ezxml_attr(vararray_xml, "name");
+							stream_mgr_add_field_c(manager, streamID, fieldname_const, packages_local, &err);
+							if (err != 0) {
+								*status = 1;
+								return;
+							}
 						}
-					}
 
-					for (varstruct_xml = ezxml_child(stream_xml, "var_struct"); varstruct_xml; varstruct_xml = ezxml_next(varstruct_xml)) {
-						structname_const = ezxml_attr(varstruct_xml, "name");
-						stream_mgr_add_pool_c(manager, streamID, structname_const, &err);
-						if (err != 0){
-							*status = 1;
-							return;
+						for (varstruct_xml = ezxml_child(streammatch_xml, "var_struct"); varstruct_xml; varstruct_xml = ezxml_next(varstruct_xml)) {
+							structname_const = ezxml_attr(varstruct_xml, "name");
+							stream_mgr_add_pool_c(manager, streamID, structname_const, packages_local, &err);
+							if (err != 0){
+								*status = 1;
+								return;
+							}
 						}
 					}
 				}
@@ -1458,23 +1577,23 @@ void xml_stream_parser(char *fname, void *manager, int *mpi_comm, int *status)
 
 /*********************************************************************************
  *
- *  Function: xml_stream_get_filename
+ *  Function: xml_stream_get_attribute
  *
  *  Parses an XML file and searches for the stream whose name matches the 'streamname'
- *  argument; then, returns the associated filename template for that stream in 
- *  the 'filename' argument.
+ *  argument; then, returns the associated attributes for that stream in
+ *  the 'filename', 'ref_time', 'filename_interval', and 'io_type' arguments.
  *
  *  The fname argument provides the name of the XML file that contains the stream
  *  definitions, and mpi_comm is the Fortran MPI communicator used by MPAS.
  *
  *********************************************************************************/
-void xml_stream_get_filename(char *fname, char *streamname, int *mpi_comm, char *filename, int *status)
+void xml_stream_get_attributes(char *fname, char *streamname, int *mpi_comm, char *filename, char *ref_time, char *filename_interval, char *io_type, int *status)
 {
 	char *xml_buf;
 	size_t bufsize;
 	ezxml_t streams;
 	ezxml_t stream_xml;
-	const char *streamID, *filename_template;
+	const char *streamID, *filename_template, *reference_time, *c_filename_interval, *xml_iotype;
 	int found;
 
 	*status = 0;
@@ -1508,11 +1627,60 @@ void xml_stream_get_filename(char *fname, char *streamname, int *mpi_comm, char 
 	for (stream_xml = ezxml_child(streams, "immutable_stream"); stream_xml; stream_xml = ezxml_next(stream_xml)) {
 		streamID = ezxml_attr(stream_xml, "name");
 		filename_template = ezxml_attr(stream_xml, "filename_template");
+		reference_time = ezxml_attr(stream_xml, "reference_time");
+		c_filename_interval = ezxml_attr(stream_xml, "filename_interval");
+		xml_iotype = ezxml_attr(stream_xml, "io_type");
 
 		if (strcmp(streamID, streamname) == 0) {
 			found = 1;
-			fprintf(stderr, "Found grid stream with template %s\n", filename_template);
+			fprintf(stderr, "Found mesh stream with filename template %s\n", filename_template);
 			sprintf(filename, "%s", filename_template);
+			if ( reference_time == NULL ) {
+				sprintf(ref_time, "initial_time");
+			} else {
+				sprintf(ref_time, "%s", reference_time);
+			}
+
+			if ( c_filename_interval == NULL ) {
+				sprintf(filename_interval, "none");
+			} else if ( strstr(c_filename_interval, "interval") ) {
+				sprintf(filename_interval, "%s", c_filename_interval);
+				c_filename_interval = ezxml_attr(stream_xml, filename_interval);
+
+				if ( c_filename_interval == NULL ) {
+					sprintf(filename_interval, "none");
+				} else {
+					sprintf(filename_interval, "%s", c_filename_interval);
+				}
+			} else {
+				sprintf(filename_interval, "%s", c_filename_interval);
+			}
+
+			if ( xml_iotype == NULL ) {
+				fprintf(stderr, "Using default io_type for mesh stream\n");
+				sprintf(io_type, "pnetcdf");
+			} else {
+				if (strstr(xml_iotype, "pnetcdf,cdf5") != NULL) {
+					sprintf(io_type, "%s", xml_iotype);
+					fprintf(stderr, "Using io_type Parallel-NetCDF (CDF-5, large variable support) for mesh stream\n");
+				}
+				else if (strstr(xml_iotype, "pnetcdf") != NULL) {
+					sprintf(io_type, "%s", xml_iotype);
+					fprintf(stderr, "Using io_type Parallel-NetCDF for mesh stream\n");
+				}
+				else if (strstr(xml_iotype, "netcdf4") != NULL) {
+					sprintf(io_type, "%s", xml_iotype);
+					fprintf(stderr, "Using io_type NetCDF-4/HDF5 for mesh stream\n");
+				}
+				else if (strstr(xml_iotype, "netcdf") != NULL) {
+					sprintf(io_type, "%s", xml_iotype);
+					fprintf(stderr, "Using io_type Serial NetCDF for mesh stream\n");
+				}
+				else {
+					sprintf(io_type, "pnetcdf");
+					fprintf(stderr, "*** unrecognized io_type specification for mesh stream; defaulting to Parallel-NetCDF\n");
+				}
+			}
 			break;
 		}
 	}
