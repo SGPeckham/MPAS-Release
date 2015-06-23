@@ -84,7 +84,7 @@
         </nml_record>
 
         <nml_record name="decomposition" in_defaults="true">
-                <nml_option name="config_block_decomp_file_prefix"   type="character"     default_value="x1.40962.graph.info.part."/>
+                <nml_option name="config_block_decomp_file_prefix"   type="character"     default_value="x1.163842.graph.info.part."/>
                 <nml_option name="config_number_of_blocks"           type="integer"       default_value="0"                  in_defaults="false"/>
                 <nml_option name="config_explicit_proc_decomp"       type="logical"       default_value="false"              in_defaults="false"/>
                 <nml_option name="config_proc_decomp_file_prefix"    type="character"     default_value="graph.info.part."   in_defaults="false"/>
@@ -107,7 +107,7 @@
 	<streams>
 		<stream name="input" 
                         type="input" 
-                        filename_template="x1.40962.init.nc" 
+                        filename_template="x1.163842.init.nc" 
                         input_interval="initial_only"
                         immutable="true">
 
@@ -622,21 +622,84 @@
 			<var name="rainnc"/>
 			<var name="refl10cm_max"/>
 			<var name="precipw"/>
+			<var name="temperature_020hPa"/>
+			<var name="temperature_025hPa"/>
+			<var name="temperature_050hPa"/>
+			<var name="temperature_100hPa"/>
 			<var name="temperature_200hPa"/>
+			<var name="temperature_300hPa"/>
+			<var name="temperature_400hPa"/>
 			<var name="temperature_500hPa"/>
+			<var name="temperature_600hPa"/>
+			<var name="temperature_700hPa"/>
 			<var name="temperature_850hPa"/>
+			<var name="temperature_925hPa"/>
+			<var name="temperature_1000hPa"/>
+			<var name="qvapor_020hPa"/>
+			<var name="qvapor_025hPa"/>
+			<var name="qvapor_050hPa"/>
+			<var name="qvapor_100hPa"/>
+			<var name="qvapor_200hPa"/>
+			<var name="qvapor_300hPa"/>
+			<var name="qvapor_400hPa"/>
+			<var name="qvapor_500hPa"/>
+			<var name="qvapor_600hPa"/>
+			<var name="qvapor_700hPa"/>
+			<var name="qvapor_850hPa"/>
+			<var name="qvapor_925hPa"/>
+			<var name="qvapor_1000hPa"/>
+			<var name="height_020hPa"/>
+			<var name="height_025hPa"/>
+			<var name="height_050hPa"/>
+			<var name="height_100hPa"/>
 			<var name="height_200hPa"/>
+			<var name="height_300hPa"/>
+			<var name="height_400hPa"/>
 			<var name="height_500hPa"/>
+			<var name="height_600hPa"/>
+			<var name="height_700hPa"/>
 			<var name="height_850hPa"/>
+			<var name="height_925hPa"/>
+			<var name="height_1000hPa"/>
+			<var name="uzonal_020hPa"/>
+			<var name="uzonal_025hPa"/>
+			<var name="uzonal_050hPa"/>
+			<var name="uzonal_100hPa"/>
 			<var name="uzonal_200hPa"/>
+			<var name="uzonal_300hPa"/>
+			<var name="uzonal_400hPa"/>
 			<var name="uzonal_500hPa"/>
+			<var name="uzonal_600hPa"/>
+			<var name="uzonal_700hPa"/>
 			<var name="uzonal_850hPa"/>
+			<var name="uzonal_925hPa"/>
+			<var name="uzonal_1000hPa"/>
+			<var name="umeridional_020hPa"/>
+			<var name="umeridional_025hPa"/>
+			<var name="umeridional_050hPa"/>
+			<var name="umeridional_100hPa"/>
 			<var name="umeridional_200hPa"/>
+			<var name="umeridional_300hPa"/>
+			<var name="umeridional_400hPa"/>
 			<var name="umeridional_500hPa"/>
+			<var name="umeridional_600hPa"/>
+			<var name="umeridional_700hPa"/>
 			<var name="umeridional_850hPa"/>
+			<var name="umeridional_925hPa"/>
+			<var name="umeridional_1000hPa"/>
+			<var name="w_020hPa"/>
+			<var name="w_025hPa"/>
+			<var name="w_050hPa"/>
+			<var name="w_100hPa"/>
 			<var name="w_200hPa"/>
+			<var name="w_300hPa"/>
+			<var name="w_400hPa"/>
 			<var name="w_500hPa"/>
+			<var name="w_600hPa"/>
+			<var name="w_700hPa"/>
 			<var name="w_850hPa"/>
+			<var name="w_925hPa"/>
+			<var name="w_1000hPa"/>
 			<var name="vorticity_200hPa"/>
 			<var name="vorticity_500hPa"/>
 			<var name="vorticity_850hPa"/>
@@ -644,7 +707,7 @@
 
 		<stream name="surface" 
                         type="input" 
-                        filename_template="x1.40962.sfc_update.nc" 
+                        filename_template="x1.163842.sfc_update.nc" 
                         input_interval="none"
                         filename_interval="none"
                         runtime_format="separate_file">
@@ -872,30 +935,104 @@
 
                 <var name="surface_pressure"        type="real"     dimensions="nCells Time"/>
 
+                <var name="temperature_020hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="temperature_025hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="temperature_050hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="temperature_100hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="temperature_150hPa"     type="real"     dimensions="nCells Time"/>
                 <var name="temperature_200hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="temperature_300hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="temperature_400hPa"     type="real"     dimensions="nCells Time"/>
                 <var name="temperature_500hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="temperature_600hPa"     type="real"     dimensions="nCells Time"/>
                 <var name="temperature_700hPa"     type="real"     dimensions="nCells Time"/>
                 <var name="temperature_850hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="temperature_925hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="temperature_1000hPa"    type="real"     dimensions="nCells Time"/>
+                <var name="relhum_020hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="relhum_025hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="relhum_050hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="relhum_100hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="relhum_150hPa"          type="real"     dimensions="nCells Time"/>
                 <var name="relhum_200hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="relhum_300hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="relhum_400hPa"          type="real"     dimensions="nCells Time"/>
                 <var name="relhum_500hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="relhum_600hPa"          type="real"     dimensions="nCells Time"/>
                 <var name="relhum_700hPa"          type="real"     dimensions="nCells Time"/>
                 <var name="relhum_850hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="relhum_925hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="relhum_1000hPa"         type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_020hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_025hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_050hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_100hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_150hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_200hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_300hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_400hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_500hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_600hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_700hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_850hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_925hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="qvapor_1000hPa"         type="real"     dimensions="nCells Time"/>
+                <var name="height_020hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="height_025hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="height_050hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="height_100hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="height_150hPa"          type="real"     dimensions="nCells Time"/>
                 <var name="height_200hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="height_300hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="height_400hPa"          type="real"     dimensions="nCells Time"/>
                 <var name="height_500hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="height_600hPa"          type="real"     dimensions="nCells Time"/>
                 <var name="height_700hPa"          type="real"     dimensions="nCells Time"/>
                 <var name="height_850hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="height_925hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="height_1000hPa"         type="real"     dimensions="nCells Time"/>
+                <var name="uzonal_020hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="uzonal_025hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="uzonal_050hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="uzonal_100hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="uzonal_150hPa"          type="real"     dimensions="nCells Time"/>
                 <var name="uzonal_200hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="uzonal_300hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="uzonal_400hPa"          type="real"     dimensions="nCells Time"/>
                 <var name="uzonal_500hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="uzonal_600hPa"          type="real"     dimensions="nCells Time"/>
                 <var name="uzonal_700hPa"          type="real"     dimensions="nCells Time"/>
                 <var name="uzonal_850hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="uzonal_925hPa"          type="real"     dimensions="nCells Time"/>
+                <var name="uzonal_1000hPa"         type="real"     dimensions="nCells Time"/>
+                <var name="umeridional_020hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="umeridional_025hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="umeridional_050hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="umeridional_100hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="umeridional_150hPa"     type="real"     dimensions="nCells Time"/>
                 <var name="umeridional_200hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="umeridional_300hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="umeridional_400hPa"     type="real"     dimensions="nCells Time"/>
                 <var name="umeridional_500hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="umeridional_600hPa"     type="real"     dimensions="nCells Time"/>
                 <var name="umeridional_700hPa"     type="real"     dimensions="nCells Time"/>
                 <var name="umeridional_850hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="umeridional_925hPa"     type="real"     dimensions="nCells Time"/>
+                <var name="umeridional_1000hPa"    type="real"     dimensions="nCells Time"/>
+                <var name="w_020hPa"               type="real"     dimensions="nCells Time"/>
+                <var name="w_025hPa"               type="real"     dimensions="nCells Time"/>
+                <var name="w_050hPa"               type="real"     dimensions="nCells Time"/>
+                <var name="w_100hPa"               type="real"     dimensions="nCells Time"/>
+                <var name="w_150hPa"               type="real"     dimensions="nCells Time"/>
                 <var name="w_200hPa"               type="real"     dimensions="nCells Time"/>
+                <var name="w_300hPa"               type="real"     dimensions="nCells Time"/>
+                <var name="w_400hPa"               type="real"     dimensions="nCells Time"/>
                 <var name="w_500hPa"               type="real"     dimensions="nCells Time"/>
+                <var name="w_600hPa"               type="real"     dimensions="nCells Time"/>
                 <var name="w_700hPa"               type="real"     dimensions="nCells Time"/>
                 <var name="w_850hPa"               type="real"     dimensions="nCells Time"/>
+                <var name="w_925hPa"               type="real"     dimensions="nCells Time"/>
+                <var name="w_1000hPa"              type="real"     dimensions="nCells Time"/>
                 <var name="vorticity_200hPa"       type="real"     dimensions="nVertices Time"/>
                 <var name="vorticity_500hPa"       type="real"     dimensions="nVertices Time"/>
                 <var name="vorticity_700hPa"       type="real"     dimensions="nVertices Time"/>
